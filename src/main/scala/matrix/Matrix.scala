@@ -139,7 +139,13 @@ object Matrix {
     })
     res
   }
-
+  /**
+   * Parallel sum of matrixes
+   * @param a  first matrix
+   * @param b  second matrix
+   * @param processNum  number of processes that sum rows
+   * @return sum of matrixes
+   * */
   def parallelSum(a: Matrix, b: Matrix,processNum: Int = 1): Matrix = {
     assert(a.m == b.m && a.n == b.n, "Matrixes must have equal sizes")
     assert(processNum > 0,"Process number must be positive")
@@ -164,7 +170,13 @@ object Matrix {
     Await.result(aggregated, scala.concurrent.duration.Duration.apply(5000, "millis"))
     return res
   }
-
+  /**
+   * Parallel subtract of matrixes
+   * @param a  first matrix
+   * @param b  second matrix
+   * @param processNum  number of processes that subtract rows
+   * @return subtract of matrixes
+   * */
   def parallelSubtract(a: Matrix, b: Matrix,processNum: Int = 1): Matrix = {
     assert(a.m == b.m && a.n == b.n, "Matrixes must have equal sizes")
     assert(processNum > 0,"Process number must be positive")
@@ -196,7 +208,14 @@ object Matrix {
     println("Squares: " + squares)*/
     return res
   }
-
+  /**
+   * Parallel mul of squad matrixes
+   * by dividing them on blocks
+   * @param a  first matrix
+   * @param b  second matrix
+   * @param blockSize  the size of each block
+   * @return mul of matrixes
+   * */
   def parallelMulOfSquadMatrixes(a: Matrix, b: Matrix, blockSize: Int = 1): Matrix = {
     assert(a.m == a.n && b.m == b.n, "Not a squad matrixes")
     assert(a.n == b.m, "The number of columns in first matrix must be equal number of rows in second matrix")
@@ -245,7 +264,11 @@ object Matrix {
     Await.result(aggregated, scala.concurrent.duration.Duration.apply(10000, "millis"))
     res
   }
-
+  /**
+   * Get unit matrix
+   * @param size size of matrix
+   * @return unit matrix
+   * */
   def getE(size: Int): Matrix = {
     assert(size > 0, "Size must be positive")
     val res: Matrix = Matrix(size, size)
@@ -254,7 +277,13 @@ object Matrix {
     }
     res
   }
-
+  /**
+   * Get array of degrees of given matrix starting with 0
+   * @param a given matrix
+   * @param n max degree of matrix
+   * @param blockSize - block size of matrix for parallel multiple
+   * @return array of a degrees
+   * */
   def getPowArray(a: Matrix, n: Int, blockSize: Int = 1): Array[Matrix] = {
     assert(a.m == a.n, "Matrix must be squad")
     val res: Array[Matrix] = new Array[Matrix](n + 1)
@@ -266,7 +295,14 @@ object Matrix {
     }
     res
   }
-
+  /**
+   * Init polynom function
+   * @param coeff  given coefficients of polynom
+   * @param blockSizeForMul  block size for parallel multiple
+   * @param processNumForSum  process number for parallel sum
+   * @param a  given squad matrix
+   * @return value of polynom
+   * */
   def calcPolynom(coeff: Array[Double], blockSizeForMul: Int = 1, processNumForSum: Int = 1)(a: Matrix): Matrix = {
     assert(coeff != null, "Invalid coefficient's array")
     assert(a.m == a.n, "Matrix must be squad")
