@@ -162,12 +162,14 @@ object Matrix {
     val r: Int = a.m % processNum
     val N: Int = (a.m - r) / processNum
     for (i <- 0 until N) {
+      //getTasks(i * processNum, (i + 1) * processNum, a, b, res)
       val aggregated: Future[Seq[Unit]] = Future.sequence(getTasks(i * processNum, (i + 1) * processNum, a, b, res))
       Await.result(aggregated, scala.concurrent.duration.Duration.Inf)
     }
+    //getTasks(N * processNum, r + N * processNum, a, b, res)
     val aggregated: Future[Seq[Unit]] = Future.sequence(getTasks(N * processNum, r + N * processNum, a, b, res))
     Await.result(aggregated, scala.concurrent.duration.Duration.Inf)
-    return res
+    res
   }
   /**
    * Parallel subtract of matrixes
@@ -192,13 +194,14 @@ object Matrix {
     val r: Int = a.m % processNum
     val N: Int = (a.m - r) / processNum
     for (i <- 0 until N) {
+      //doTasks(i * processNum, (i + 1) * processNum, a, b, res)
       val aggregated: Future[Seq[Unit]] = Future.sequence(getTasks(i * processNum, (i + 1) * processNum, a, b, res))
       Await.result(aggregated, scala.concurrent.duration.Duration.Inf)
     }
-    getTasks(N * processNum, r + N * processNum, a, b, res)
+    //doTasks(N * processNum, r + N * processNum, a, b, res)
     val aggregated: Future[Seq[Unit]] = Future.sequence(getTasks(N * processNum, r + N * processNum, a, b, res))
     Await.result(aggregated, scala.concurrent.duration.Duration.Inf)
-    return res
+    res
   }
   /**
    * Parallel mul of squad matrixes
@@ -251,11 +254,100 @@ object Matrix {
         calc_ij_block(i, j, matr1, matr2, r, blockSize)
       }
     }
-
-    val aggregated: Future[Seq[Unit]] = Future.sequence(getTasks(a, b, res, blockSize))
+    val seq = getTasks(a, b, res, blockSize)
+    val aggregated: Future[Seq[Unit]] = Future.sequence(seq)
     Await.result(aggregated, scala.concurrent.duration.Duration.apply(10000, "millis"))
     res
   }
+  /**
+   * Block mul of squad matrixes in one thread
+   * @param a  first matrix
+   * @param b  second matrix
+   * @param blockSize  the size of each block
+   * @return mul of matrixes
+   * */
+  def blockMul(a: Matrix,b: Matrix,blockSize: Int = 1): Matrix = {
+    assert(a.m == a.n && b.m == b.n, "Not a squad matrixes")
+    assert(a.n == b.m, "The number of columns in first matrix must be equal number of rows in second matrix")
+    assert(blockSize > 0, "Block size must be positive")
+    val r: Int = a.m % blockSize
+    assert(r == 0, "The matrix size is not entirely divisible by block size")
+    val res = Matrix(a.m, a.n)
+    val q: Int = a.m / blockSize
+
+    def calc_ij_block(i: Int, j: Int, matr1: Matrix, matr2: Matrix, r: Matrix, blockSize: Int): Unit = {
+      val _start_i: Int = i * blockSize
+      val _end_i: Int = (i + 1) * blockSize
+      val _start_j: Int = j * blockSize
+      val _end_j: Int = (j + 1) * blockSize
+      var Cij: Matrix = Matrix(blockSize, blockSize)
+      val slice = (ar: Array[Array[Double]], i: Int, j: Int, blockSize: Int) => {
+        val res: Array[Array[Double]] = ar.slice(i * blockSize, (i + 1) * blockSize)
+        for (s <- 0 until res.length) {
+          res(s) = res(s).slice(j * blockSize, (j + 1) * blockSize)
+        }
+        res
+      }
+      val n = matr1.m / blockSize
+      for (s <- 0 until n) {
+        val Ais: Matrix = Matrix(slice(matr1.matrix, i, s, blockSize))
+        val Bsj: Matrix = Matrix(slice(matr2.matrix, s, j, blockSize))
+        val tmp: Matrix = Ais * Bsj
+        Cij = Cij + tmp
+      }
+      for (u <- _start_i until _end_i) {
+        for (w <- _start_j until _end_j) {
+          r.at(u)(w) = Cij.at(u - _start_i)(w - _start_j)
+        }
+      }
+    }
+
+    def calcC(matr1: Matrix, matr2: Matrix, r: Matrix, blockSize: Int): Unit = {
+      val n = matr1.m / blockSize
+      for {i <- 0 until n
+           j <- 0 until n} {
+        calc_ij_block(i, j, matr1, matr2, r, blockSize)
+      }
+    }
+    calcC(a, b, res, blockSize)
+    res
+  }
+  /**
+   * Deafult mul of 2 squad matrixes with parallel
+   * calculating of rows
+   * @param a  first matrix
+   * @param b  second matrix
+   * @param processNum  number of processes that calculate rows
+   * @return mul of matrixes
+   * */
+  def defaultParallelMul(a: Matrix,b: Matrix,processNum: Int = 1): Matrix ={
+    assert(a.m == a.n && b.m == b.n, "Not a squad matrixes")
+    assert(a.n == b.m, "The number of columns in first matrix must be equal number of rows in second matrix")
+    assert(processNum > 0,"Process number must be positive")
+    val res: Matrix = Matrix(a.n,a.m)
+    val r: Int = a.m % processNum
+    val n: Int = ((a.m - r) / processNum).toInt
+    def createTask(matr1: Matrix, matr2: Matrix, res: Matrix,startIndex: Int,endIndex: Int) = {
+        Future{
+            for(i <- startIndex until endIndex) {
+                for (j <- 0 until matr1.n) {
+                     for (k <- 0 until matr1.n) {
+                          res.matrix(i)(j) += matr1.at(i)(k) * matr2.at(k)(j)
+                     }
+                }
+            }
+        }
+    }
+    def getTasks(matr1: Matrix, matr2: Matrix, res: Matrix, blockNum: Int,procNum: Int): Seq[Future[Unit]] = {
+        for(i <- 0 until blockNum) yield createTask(matr1,matr2,res,i * procNum,(i + 1) * procNum)
+    }
+    val aggregated = Future.sequence(getTasks(a,b,res,n,processNum))
+    Await.result(aggregated,scala.concurrent.duration.Duration.apply(10000, "millis"))
+    val rest = Future.sequence(Seq(createTask(a,b,res,n * processNum,n * processNum + r)))
+    Await.result(rest,scala.concurrent.duration.Duration.apply(10000, "millis"))
+    res
+  }
+  
   /**
    * Get unit matrix
    * @param size size of matrix
@@ -287,6 +379,7 @@ object Matrix {
     }
     res
   }
+
   /**
    * Init polynom function
    * @param coeff  given coefficients of polynom
@@ -308,10 +401,3 @@ object Matrix {
   }
 }
 
-object MyMatrix extends App {
-  val m: Matrix = Matrix(Array(Array(1.0, 0.0, 0.0), Array(0.0, 1.0, 0.0), Array(0.0, 0.0, 1.0)))
-  val coef: Array[Double] = Array(1.0,1.0,1.0,1.0)
-  val polynom = Matrix.calcPolynom(coef,1,m.getRowsNum())
-  val res: Matrix = polynom(m)
-  println(res)
-}

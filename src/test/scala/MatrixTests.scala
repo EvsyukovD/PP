@@ -48,7 +48,7 @@ object MatrixTests extends App {
     delta
   }
 
-  val n: Int = 60
+  val n: Int = 1
   val m: Int = n
   val NumOfSumIterations: Int = 30
   val processNumForSum: Int = n
@@ -68,19 +68,31 @@ object MatrixTests extends App {
 
   var avg_mul_default: Double = 0.0
   var avg_mul_parallel: Double = 0.0
+  var avg_mul_blockmul: Double = 0.0
+  var avg_mul_default_with_parallel: Double = 0.0
   val NumOfMulIterations: Int = 30
   val blockSize: Int = 50
-  val size: Int = 150
+  val size: Int = 100
+  val procNum: Int = 1
   val NumOfProcesses: Int = size * size / (blockSize * blockSize)
   for (i <- 0 until NumOfMulIterations) {
     val a: Matrix = MatrixInitializer.genRandomMatrix(size, size)
     val b: Matrix = MatrixInitializer.genRandomMatrix(size, size)
     avg_mul_default = avg_mul_default + time{a * b}
     avg_mul_parallel = avg_mul_parallel + time{Matrix.parallelMulOfSquadMatrixes(a, b, blockSize)}
+    avg_mul_blockmul = avg_mul_blockmul + time{Matrix.blockMul(a, b, blockSize)}
+    avg_mul_default_with_parallel = avg_mul_default_with_parallel + time{Matrix.defaultParallelMul(a,b,procNum)}
   }
   avg_mul_default /= (NumOfMulIterations * 1000000)
   avg_mul_parallel /= (NumOfMulIterations * 1000000)
+  avg_mul_blockmul /= (NumOfMulIterations * 1000000)
+  avg_mul_default_with_parallel /= (NumOfMulIterations * 1000000)
   println(s"Average time for mul (default, ms): $avg_mul_default")
   println(s"Average time for mul (parallel, ms): $avg_mul_parallel")
+  println(s"Average time for block mul (one thread,ms): $avg_mul_blockmul")
+  println(s"Average time for default mul with parallel (parallel, ms): $avg_mul_default_with_parallel")
   println(s"Num of Processes: $NumOfProcesses")
+  println(s"Num of Processes for default mul with parallel: $procNum")
+  val e = Matrix.getE(4)
+  println(Matrix.blockMul(e,e,4))
 }
