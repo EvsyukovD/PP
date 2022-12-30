@@ -5,7 +5,7 @@ import scala.specialized
 import math.Numeric.Implicits.infixNumericOps
 import math.Fractional.Implicits.infixFractionalOps
 import math.Integral.Implicits.infixIntegralOps
-import scala.math.{ScalaNumber, floor, sqrt}
+import scala.math.{ScalaNumber, floor, log, sqrt}
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
@@ -149,7 +149,6 @@ object Matrix {
   def parallelSum(a: Matrix, b: Matrix,processNum: Int = 1): Matrix = {
     assert(a.m == b.m && a.n == b.n, "Matrixes must have equal sizes")
     assert(processNum > 0,"Process number must be positive")
-    //val processNum: Int = 4
     val res = Matrix(a.m, a.n)
 
     def getTasks(startIndex: Int, endIndex: Int, matr1: Matrix, matr2: Matrix, res: Matrix): Seq[Future[Unit]] = {
@@ -164,10 +163,10 @@ object Matrix {
     val N: Int = (a.m - r) / processNum
     for (i <- 0 until N) {
       val aggregated: Future[Seq[Unit]] = Future.sequence(getTasks(i * processNum, (i + 1) * processNum, a, b, res))
-      Await.result(aggregated, scala.concurrent.duration.Duration.apply(5000, "millis"))
+      Await.result(aggregated, scala.concurrent.duration.Duration.Inf)
     }
     val aggregated: Future[Seq[Unit]] = Future.sequence(getTasks(N * processNum, r + N * processNum, a, b, res))
-    Await.result(aggregated, scala.concurrent.duration.Duration.apply(5000, "millis"))
+    Await.result(aggregated, scala.concurrent.duration.Duration.Inf)
     return res
   }
   /**
@@ -180,7 +179,6 @@ object Matrix {
   def parallelSubtract(a: Matrix, b: Matrix,processNum: Int = 1): Matrix = {
     assert(a.m == b.m && a.n == b.n, "Matrixes must have equal sizes")
     assert(processNum > 0,"Process number must be positive")
-    //val processNum: Int = 4
     val res = Matrix(a.m, a.n)
 
     def getTasks(startIndex: Int, endIndex: Int, matr1: Matrix, matr2: Matrix, res: Matrix): Seq[Future[Unit]] = {
@@ -195,17 +193,11 @@ object Matrix {
     val N: Int = (a.m - r) / processNum
     for (i <- 0 until N) {
       val aggregated: Future[Seq[Unit]] = Future.sequence(getTasks(i * processNum, (i + 1) * processNum, a, b, res))
-      Await.result(aggregated, scala.concurrent.duration.Duration.apply(5000, "millis"))
+      Await.result(aggregated, scala.concurrent.duration.Duration.Inf)
     }
+    getTasks(N * processNum, r + N * processNum, a, b, res)
     val aggregated: Future[Seq[Unit]] = Future.sequence(getTasks(N * processNum, r + N * processNum, a, b, res))
-    Await.result(aggregated, scala.concurrent.duration.Duration.apply(5000, "millis"))
-    /*val tasks: Seq[Future[Int]] =  for (i <- 1 to processNum) yield Future {
-      i * i
-    }
-    val aggregated: Future[Seq[Int]] = Future.sequence(tasks)
-
-    val squares: Seq[Int] = Await.result(aggregated,scala.concurrent.duration.Duration.apply(5000,"millis"))
-    println("Squares: " + squares)*/
+    Await.result(aggregated, scala.concurrent.duration.Duration.Inf)
     return res
   }
   /**
