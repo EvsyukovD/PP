@@ -314,7 +314,7 @@ object Matrix {
   }
   /**
    * Deafult mul of 2 squad matrixes with parallel
-   * calculating of rows
+   * calculating rows
    * @param a  first matrix
    * @param b  second matrix
    * @param processNum  number of processes that calculate rows
@@ -347,7 +347,7 @@ object Matrix {
     Await.result(rest,scala.concurrent.duration.Duration.apply(10000, "millis"))
     res
   }
-  
+
   /**
    * Get unit matrix
    * @param size size of matrix

@@ -70,9 +70,9 @@ object MatrixTests extends App {
   var avg_mul_parallel: Double = 0.0
   var avg_mul_blockmul: Double = 0.0
   var avg_mul_default_with_parallel: Double = 0.0
-  val NumOfMulIterations: Int = 30
+  val NumOfMulIterations: Int = 1
   val blockSize: Int = 50
-  val size: Int = 100
+  val size: Int = 500
   val procNum: Int = 1
   val NumOfProcesses: Int = size * size / (blockSize * blockSize)
   for (i <- 0 until NumOfMulIterations) {
@@ -90,9 +90,7 @@ object MatrixTests extends App {
   println(s"Average time for mul (default, ms): $avg_mul_default")
   println(s"Average time for mul (parallel, ms): $avg_mul_parallel")
   println(s"Average time for block mul (one thread,ms): $avg_mul_blockmul")
-  println(s"Average time for default mul with parallel (parallel, ms): $avg_mul_default_with_parallel")
+  println(s"Average time for default mul with parallel (ms): $avg_mul_default_with_parallel")
   println(s"Num of Processes: $NumOfProcesses")
   println(s"Num of Processes for default mul with parallel: $procNum")
-  val e = Matrix.getE(4)
-  println(Matrix.blockMul(e,e,4))
 }
